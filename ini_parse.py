@@ -48,7 +48,7 @@ def dict_to_ini(dict_):
     parser.write(fp)
     return fp.getvalue()
 
-def apply_template(providers, users, keyword='template'):
+def apply_templates(providers, users, keyword='template'):
     '''
     Duplicate the whole 'node 1' section changing just the host
 
@@ -56,15 +56,23 @@ def apply_template(providers, users, keyword='template'):
     ...  'a template': {'host': '111.111.111.111',
     ...                 'port': '1234',
     ...                 'configure': 'a',
-    ...                 'configure': 'b',
     ...  }
     ... }
     >>> users = {
-    ...  'user one': {'template': 'a template'},
-    ...  'user two': {'host': '222.222.222.222', 'template': 'a template'},
+    ...  'user one': {'extra': 'value', 'template': 'a template'},
+    ...  'user two': {'other': 'value', 'host': '222.222.222.222', 'template': 'a template'},
     ... }
-    >>> r = apply_template(providers, users)
-    >>> r = apply_template({}, users)
+    >>> apply_templates(providers, users) == {
+    ... 'user one': {'configure': 'a',
+    ...             'extra': 'value',
+    ...             'host': '111.111.111.111',
+    ...             'port': '1234'},
+    ... 'user two': {'configure': 'a',
+    ...             'host': '222.222.222.222',
+    ...             'other': 'value',
+    ...             'port': '1234'}}
+    True
+    >>> r = apply_templates({}, users)
     Traceback (most recent call last):
        ...
     Exception: Option "template = a template" defined in section "user one", but section "template a template" is missing
@@ -118,7 +126,7 @@ def autoconvert_type(value):
         try: return conversion(value)
         except ValueError: pass
 
-def selective_update(default, new, check_type=False):
+def selective_update(default, new=None, check_type=False):
     '''
     Update 'default' dictionary from 'new', never adding new keys in 'default',
     but updating just the values of existing ones.
@@ -143,6 +151,7 @@ def selective_update(default, new, check_type=False):
     >>> default == {'default 1': 0,         'default 2': 'hello!'}
     True
     '''
+    if not new: return
     keys = set(default.keys()) & set(new.keys())
     failures = []
     for k in keys:
