@@ -1,10 +1,3 @@
-'''
-Utilities for handling option values and sections. I choosed to not use custom
-objects but just standard dictionaries to keep things simple. Nonetheless, they
-are used with common patterns which are encapsulated into functions like
-'selective_update'
-'''
-
 import re
 from cStringIO import StringIO
 import ConfigParser
@@ -13,6 +6,14 @@ from pprint import pprint
 
 def ini_to_dict(ini):
     '''
+    Convert an .ini file content into a dictionary (actually, a dictionary of
+    dictionaries). Many functions in this module work on that resulting
+    dictionary, corresponding to the represented file. You should understand
+    the mapping. Into the resulting dictionary of dictionaries, first level
+    keys are the sections, second level keys are the options inside each
+    section. This is obsoleted by configparser interface in python 3 standard
+    library.
+
     >>> ini = """
     ... [core]
     ... log = value
@@ -21,8 +22,16 @@ def ini_to_dict(ini):
     ... [other section]
     ... other variable = value
     ... """
-    >>> ini_to_dict(ini) == \
-    {'core': {'log': 'value', 'main_loop_timeout': '5.9'}, 'other section': {'other variable': 'value'}}
+    >>> dict_ = {
+    ...     'core': {
+    ...         'log': 'value',
+    ...         'main_loop_timeout': '5.9',
+    ...     },
+    ...     'other section': {
+    ...         'other variable': 'value',
+    ...     },
+    ... }
+    >>> ini_to_dict(ini) == dict_
     True
     '''
     parser = ConfigParser.ConfigParser()
@@ -50,32 +59,38 @@ def dict_to_ini(dict_):
 
 def apply_templates(providers, users, keyword='template'):
     '''
-    Duplicate the whole 'node 1' section changing just the host
+    In an .ini file with sections defining objects, one may wish to create
+    several sections from a common template, just overriding some of the
+    parameters into the source template.
 
     >>> providers = {
-    ...  'a template': {'host': '111.111.111.111',
-    ...                 'port': '1234',
-    ...                 'configure': 'a',
+    ...  'template_name': {'host'      : '111.111.111.111',
+    ...                             'port'      : '1234',
+    ...                             'configure' : 'a',
     ...  }
     ... }
     >>> users = {
-    ...  'user one': {'extra': 'value', 'template': 'a template'},
-    ...  'user two': {'other': 'value', 'host': '222.222.222.222', 'template': 'a template'},
+    ...  'user one': {'template' : 'template_name',
+    ...               'extra'    : 'extra value'},
+    ...  'user two': {'template' : 'template_name',
+    ...               'host'     : '222.222.222.222',
+    ...               'other'    : 'other value'},
     ... }
-    >>> apply_templates(providers, users) == {
+    >>> result = {
     ... 'user one': {'configure': 'a',
-    ...             'extra': 'value',
-    ...             'host': '111.111.111.111',
-    ...             'port': '1234'},
+    ...              'extra': 'extra value',
+    ...              'host': '111.111.111.111',
+    ...              'port': '1234'},
     ... 'user two': {'configure': 'a',
-    ...             'host': '222.222.222.222',
-    ...             'other': 'value',
-    ...             'port': '1234'}}
+    ...              'host': '222.222.222.222',
+    ...              'other': 'other value',
+    ...              'port': '1234'}}
+    >>> apply_templates(providers, users) == result
     True
     >>> r = apply_templates({}, users)
     Traceback (most recent call last):
        ...
-    Exception: Option "template = a template" defined in section "user one", but section "template a template" is missing
+    Exception: Option "template = template_name" defined in section "user one", but section "template template_name" is missing
     '''
     result = users.copy()
     for name, options in users.items():
@@ -91,7 +106,8 @@ def apply_templates(providers, users, keyword='template'):
 
 def parse_multioption(options, prefix, keep=False):
     '''
-    Filter and parse options based on a prefix, in order to build a dictionary
+    Filter and parse options based on a prefix, in order to build an user
+    defined dictionary.
 
     >>> options={
     ...  'bind_timeout': '30',
@@ -103,9 +119,18 @@ def parse_multioption(options, prefix, keep=False):
     ...  'another_dict___keyA': 'valA',
     ...  'another_dict___keyB': 'valB',
     ... }
-    >>> parse_multioption(options, 'ini_dict__') == {'key3': 'val3', 'key2': 'val2', 'key1': 'val1'}
+    >>> ini_dict = {
+    ... 'key3': 'val3',
+    ... 'key2': 'val2',
+    ... 'key1': 'val1',
+    ... }
+    >>> parse_multioption(options, 'ini_dict__') == ini_dict
     True
-    >>> parse_multioption(options, 'another_dict___') == {'keyB': 'valB', 'keyA': 'valA'}
+    >>> another_dict = {
+    ... 'keyB': 'valB',
+    ... 'keyA': 'valA',
+    ... }
+    >>> parse_multioption(options, 'another_dict___') == another_dict
     True
     '''
     pattern = '{p}(.+)'.format(p=prefix)
@@ -121,13 +146,25 @@ def parse_multioption(options, prefix, keep=False):
     return parsed
 
 def autoconvert_type(value):
-    '''Guess the type of a value'''
+    '''
+    Convert a string to a builtin type trying to guess the type.
+    
+    >>> a = autoconvert_type
+    >>> a('1')
+    1
+    >>> a('a')
+    'a'
+    '''
     for conversion in (int, float, str):
         try: return conversion(value)
         except ValueError: pass
 
 def selective_update(default, new=None, check_type=False):
     '''
+    Useful for update an object's default values with parameters that come from
+    a configuration section, but when the configuration section could contain
+    also other values, not useful for this object.
+
     Update 'default' dictionary from 'new', never adding new keys in 'default',
     but updating just the values of existing ones.
 
@@ -141,8 +178,8 @@ def selective_update(default, new=None, check_type=False):
 
     When 'check_type' is True, use the default dictionary as a template to
     convert the type of new dictionary values, instead of using automatic
-    conversion. This is functionally not related with a selective update, but
-    this function will be used where also a type conversion is important.
+    conversion. Raise a ValueError if a new value is not compliant with the
+    default type.
 
     >>> default =  {'default 1': 0,         'default 2': 'hello!'}
     >>> new     =  {'default 1': '0.0.0.0', 'unknown': 'who cares'}
@@ -165,7 +202,8 @@ def selective_update(default, new=None, check_type=False):
         
 def filter_dict(options, regexp):
     '''
-    Select keys from a dictionary and remove the common part from their names
+    Useful to handle groups of sections or options. Select keys from a
+    dictionary and remove the common part from their names.
 
     >>> o = {
     ...  'core'         : {'cron': ''},
