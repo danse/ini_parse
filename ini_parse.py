@@ -145,6 +145,22 @@ def parse_multioption(options, prefix, keep=False):
             parsed[new_key] = v
     return parsed
 
+def bool_conversion(v):
+    '''
+    >>> b = bool_conversion
+    >>> b('True'), b('False')
+    (True, False)
+    >>> b('true'), b('false')
+    (True, False)
+    >>> b('foo')
+    Traceback (most recent call last):
+    ...
+    ValueError: invalid literal for bool_conversion(): 'foo'
+    '''
+    if v.title() == 'True':  return True
+    if v.title() == 'False': return False
+    raise ValueError('invalid literal for bool_conversion(): {0!r}'.format(v))
+
 def autoconvert_type(value):
     '''
     Convert a string to a builtin type trying to guess the type.
@@ -154,8 +170,10 @@ def autoconvert_type(value):
     1
     >>> a('a')
     'a'
+    >>> a('False')
+    False
     '''
-    for conversion in (int, float, str):
+    for conversion in (int, float, bool_conversion, str):
         try: return conversion(value)
         except ValueError: pass
 
