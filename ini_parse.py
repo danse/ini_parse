@@ -17,7 +17,7 @@ def ini_to_dict(ini):
     >>> ini = """
     ... [core]
     ... log = value
-    ... main_loop_timeout = 5.9
+    ... main_Loop_timeout = 5.9
     ...
     ... [other section]
     ... other variable = value
@@ -25,7 +25,7 @@ def ini_to_dict(ini):
     >>> dict_ = {
     ...     'core': {
     ...         'log': 'value',
-    ...         'main_loop_timeout': '5.9',
+    ...         'main_Loop_timeout': '5.9',
     ...     },
     ...     'other section': {
     ...         'other variable': 'value',
@@ -35,6 +35,7 @@ def ini_to_dict(ini):
     True
     '''
     parser = ConfigParser.ConfigParser()
+    parser.optionxform = str # To make options case sensitive
     fp = StringIO(ini)
     parser.readfp(fp)
     options = {}
