@@ -191,7 +191,7 @@ def selective_update(default, new=None, check_type=False):
 
     >>> default =  {'default 1': 0,    'default 2': 'hello!'}
     >>> new     =  {'default 1': '1234', 'unknown': 'who cares'}
-    >>> selective_update(default, new)
+    >>> _ = selective_update(default, new)
     >>> default == {'default 1': 1234, 'default 2': 'hello!'}
     True
 
@@ -202,9 +202,12 @@ def selective_update(default, new=None, check_type=False):
 
     >>> default =  {'default 1': 0,         'default 2': 'hello!'}
     >>> new     =  {'default 1': '0.0.0.0', 'unknown': 'who cares'}
-    >>> selective_update(default, new, check_type=True)
+    >>> outcome = selective_update(default, new, check_type=True)
+    >>> outcome['errors']
     [ValueError("invalid literal for int() with base 10: '0.0.0.0'",)]
-    >>> default == {'default 1': 0,         'default 2': 'hello!'}
+    >>> outcome['ignored']
+    ['unknown']
+    >>> default == {'default 1': 0, 'default 2': 'hello!'}
     True
     '''
     if not new: return
@@ -212,12 +215,15 @@ def selective_update(default, new=None, check_type=False):
     failures = []
     for k in keys:
         try:
-            if check_type: value = type(default[k])(new[k]) # could raise ValueError
-            else:          value = autoconvert_type(new[k])
+            if check_type: value = type(default[k])(new.pop(k)) # could raise ValueError
+            else:          value = autoconvert_type(new.pop(k))
             default[k] = value
         except ValueError as e:
             failures.append(e)
-    if failures: return failures
+    outcome = {}
+    if failures: outcome['errors'] = failures
+    if new.keys(): outcome['ignored'] = new.keys()
+    return outcome
         
 def filter_dict(options, regexp):
     '''
