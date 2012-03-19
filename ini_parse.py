@@ -201,7 +201,7 @@ def selective_update(default, new=None, check_type=False):
 
     >>> default =  {'default 1': 0,         'default 2': 'hello!'}
     >>> new     =  {'default 1': '0.0.0.0', 'unknown': 'who cares'}
-    >>> selective_update(default, new, check_type=True) # doctest: +ELLIPSIS
+    >>> selective_update(default, new, check_type=True)
     [ValueError("invalid literal for int() with base 10: '0.0.0.0'",)]
     >>> default == {'default 1': 0,         'default 2': 'hello!'}
     True
