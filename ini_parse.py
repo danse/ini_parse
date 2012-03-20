@@ -209,8 +209,14 @@ def selective_update(default, new=None, check_type=False):
     ['unknown']
     >>> default == {'default 1': 0, 'default 2': 'hello!'}
     True
+
+    Modify the default dict, not the new dict
+
+    >>> new == {'default 1': '0.0.0.0', 'unknown': 'who cares'}
+    True
     '''
     if not new: return
+    new = new.copy()
     keys = set(default.keys()) & set(new.keys())
     failures = []
     for k in keys:
