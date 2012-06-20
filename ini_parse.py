@@ -4,6 +4,21 @@ import ConfigParser
 import logging
 from pprint import pprint
 
+def remove_comment(s):
+    '''
+    >>> remove_comment('value # comment')
+    'value'
+    >>> remove_comment('weird#value    # comment')
+    'weird#value'
+    >>> remove_comment('value#comment')
+    'value'
+    >>> remove_comment('value')
+    'value'
+    '''
+    if '#' in s:
+        s = '#'.join(s.split('#')[:-1])
+    return s.strip()
+
 def ini_to_dict(ini):
     '''
     Convert an .ini file content into a dictionary (actually, a dictionary of
@@ -16,11 +31,11 @@ def ini_to_dict(ini):
 
     >>> ini = """
     ... [core]
-    ... log = value
+    ... log = value # Comment
     ... main_Loop_timeout = 5.9
     ...
     ... [other section]
-    ... other variable = value
+    ... other variable = value  # two spaces comment
     ... """
     >>> dict_ = {
     ...     'core': {
@@ -40,7 +55,9 @@ def ini_to_dict(ini):
     parser.readfp(fp)
     options = {}
     for section in parser.sections():
-        options[section] = dict(parser.items(section))
+        options[section] = {}
+        for option, value in parser.items(section):
+            options[section][option] = remove_comment(value)
     return options
 
 def dict_to_ini(dict_):
