@@ -195,7 +195,21 @@ def autoconvert_type(value):
         try: return conversion(value)
         except ValueError: pass
 
-def selective_update(default, new=None, check_type=False):
+def contains_any(s, l):
+    """
+    >>> contains_any('a_b', ('c', 'd'))
+    False
+    >>> contains_any('a_b', ('c', 'b'))
+    True
+    >>> contains_any('a_b', ())
+    False
+    """
+    for ll in l:
+        if ll in s:
+            return True
+    return False
+
+def selective_update(default, new=None, check_type=False, multioptions=()):
     '''
     Useful for update an object's default values with parameters that come from
     a configuration section, but when the configuration section could contain
@@ -231,21 +245,35 @@ def selective_update(default, new=None, check_type=False):
 
     >>> new == {'default 1': '0.0.0.0', 'unknown': 'who cares'}
     True
+
+    Usually if there are multioptions in a section they deserve a special
+    handling, because their quantity is not known, they don't have to be
+    selected
+
+    >>> default = {'multioption__one_k':'one_v'}
+    >>> new = {'multioption__two_k':'two_v'}
+    >>> selective_update(default, new, multioptions=('multioption__',))
+    {'ignored': [], 'errors': []}
+    >>> default == {'multioption__one_k':'one_v', 'multioption__two_k':'two_v'}
+    True
     '''
     if not new: return
-    new = new.copy()
-    keys = set(default.keys()) & set(new.keys())
-    failures = []
-    for k in keys:
+    outcome = {'errors':[], 'ignored':[]}
+    for k,v in new.items():
         try:
-            if check_type: value = type(default[k])(new.pop(k)) # could raise ValueError
-            else:          value = autoconvert_type(new.pop(k))
-            default[k] = value
+            if check_type:
+                value = type(default[k])(v) # could raise ValueError or KeyError
+            else:
+                if k in default or contains_any(k, multioptions):
+                    value = autoconvert_type(v)
+                    default[k] = value
         except ValueError as e:
-            failures.append(e)
-    outcome = {}
-    if failures: outcome['errors'] = failures
-    if new.keys(): outcome['ignored'] = new.keys()
+            outcome['errors'].append(e)
+        except KeyError:
+            if contains_any(k, multioptions):
+                default[k] = autoconvert_type(v)
+            else:
+                outcome['ignored'].append(k)
     return outcome
         
 def filter_dict(options, regexp):
