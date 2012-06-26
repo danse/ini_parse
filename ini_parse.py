@@ -256,6 +256,12 @@ def selective_update(default, new=None, check_type=False, multioptions=()):
     {'ignored': [], 'errors': []}
     >>> default == {'multioption__one_k':'one_v', 'multioption__two_k':'two_v'}
     True
+    >>> default = {}
+    >>> new = {'multioption__two_k':'two_v'}
+    >>> selective_update(default, new, multioptions=('multioption__',))
+    {'ignored': [], 'errors': []}
+    >>> default == {'multioption__two_k':'two_v'}
+    True
     '''
     if not new: return
     outcome = {'errors':[], 'ignored':[]}
@@ -267,6 +273,8 @@ def selective_update(default, new=None, check_type=False, multioptions=()):
                 if k in default or contains_any(k, multioptions):
                     value = autoconvert_type(v)
                     default[k] = value
+                else:
+                    outcome['ignored'].append(k)
         except ValueError as e:
             outcome['errors'].append(e)
         except KeyError:
