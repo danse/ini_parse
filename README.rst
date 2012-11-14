@@ -49,6 +49,20 @@ like::
 Which is not so good-looking, but it allows you to insert a very complex
 configurable structure in your configuration file.
 
+Another use for multioptions is to build an option group within a section. For
+example, in a configuration file like::
+
+ [person Larry]
+
+ age = 37
+
+ [person Linda]
+
+ age = 33
+
+ relative_child = Mary
+ relative_husband = Larry
+
 Templating
 __________
 
